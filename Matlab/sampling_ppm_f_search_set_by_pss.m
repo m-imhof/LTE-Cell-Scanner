@@ -16,12 +16,16 @@ len_short = len - (len_pss-1);
 
 corr_store = zeros(len_short, num_fo_pss);
 
+% Correlate PSS_FO Sequences with Recevied Signal
 for i=1:num_fo_pss
+    % Perform Cross Correlation (ABS-Squared)
     tmp_corr = abs( filter(pss_fo_set(end:-1:1, i), 1, s) ).^2;
+    % Grab Second Half
     tmp_corr = tmp_corr(len_pss:end);
     corr_store(:,i) = tmp_corr;
 end
 
+% Reshapes corr_store to #PSSx#CorrSamplesx#FO
 if sampling_carrier_twist==1
     ppm = inf;
     f_set = fo_search_set;
@@ -43,22 +47,28 @@ if sampling_carrier_twist==1
     return;
 end
 
-pss_period = [(19200/2)-1, (19200/2), (19200/2)+1];
+% PSS Repeats Every Half Radio Frame
+pss_period = [(19200/2)-1, (19200/2), (19200/2)+1]; % 19200 = SamplingFreq x 10ms (1 Radio Frame)
 num_half_radioframe = floor( len_short./pss_period );
 max_peak_all = zeros(1, 3*num_fo_pss);
 max_idx_all = zeros(1, 3*num_fo_pss);
 peak_to_avg = zeros(1, 3*num_fo_pss);
 for i=1:3
+    % 1st PSS Period
     corr_store_tmp = corr_store(1:pss_period(i), : );
+    % Add in Remaining PSS Periods 
     for j=2:num_half_radioframe(i)
         sp = (j-1)*pss_period(i) + 1;
         ep = j*pss_period(i);
         corr_store_tmp = corr_store_tmp + corr_store(sp:ep, : );
     end
+    % Add in Shifted forward and back by one versions
     corr_store_tmp = corr_store_tmp + circshift(corr_store_tmp, [-1,0]) + circshift(corr_store_tmp, [1,0]);
     sp = (i-1)*num_fo_pss + 1;
     ep = i*num_fo_pss;
+    % Find the Max Peak
     [max_peak_all(sp:ep), max_idx_all(sp:ep)] = max(corr_store_tmp, [], 1);
+    % Calculate Peak to Average Ratio (PAR)
     for j=sp:ep
         tmp_peak = max_peak_all(j);
         tmp_max_idx = max_idx_all(j);
@@ -74,7 +84,7 @@ end
 [~, sort_idx] = sort(max_peak_all, 'descend');
 
 max_reserve = 1;
-above_par_idx = (peak_to_avg(sort_idx(1:max_reserve)) > 8.5);
+above_par_idx = (peak_to_avg(sort_idx(1:max_reserve)) > 8.5); % Find the Max PAR Given It's Above 8.5dB
 disp(['Hit        PAR ' num2str(peak_to_avg(sort_idx(1:max_reserve))) 'dB']);
 
 if sum(above_par_idx)==0
@@ -100,13 +110,18 @@ fo_idx_set = inf(1, length(sort_idx));
 
 real_count = 0;
 for i=1:length(sort_idx)
+    % Find Which Bracket of num_fo_pss index is in
     shift_idx = floor( ( sort_idx(i)-1 )/num_fo_pss ) + 1; % 1 -- -1; 2 -- 0; 3 -- 1
+    % Find Which Index 1:num_fo_pss The Peak Is In
     fo_pss_idx = sort_idx(i) - (shift_idx-1)*num_fo_pss;
     
-    % calculate pss idx
+    % calculate pss idx - PSS Grouped by FO, i.e. PSS1 PSS1 PSS1 PSS2 PSS2
+    % PSS2 PSS3 PSS3 PSS3
     pss_idx = floor( (fo_pss_idx-1)/length(fo_search_set) ) + 1;
     
-    % calculate frequency offset
+    % calculate frequency offset - For Each PSS There are
+    % length(fo_search_set) Frequency Offsets - Find the Best FO Out of the
+    % Given Set
     fo_idx = mod(fo_pss_idx-1, length(fo_search_set)) + 1;
     f_tmp = fo_search_set(fo_idx);
     

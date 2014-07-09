@@ -11,18 +11,20 @@
 
 % See also README in root directory and ../scan-capture.
 
-function [cell_info, r_pbch_sub, r_20M_sub] = CellSearch(r_pbch, r_20M, f_search_set, fc)
+%function [cell_info, r_pbch_sub, r_20M_sub] = CellSearch(r_pbch, r_20M, f_search_set, fc)
 
+% Generate Time Domain PSS Sequences For The 3 Possible PSS Values
 [~, td_pss] = pss_gen;
 
 % f_search_set = 20e3:5e3:30e3; % change it wider if you don't know pre-information
+% PSS Sequences Under The Given Frequency Offset Search Set
 pss_fo_set = pss_fo_set_gen(td_pss, f_search_set);
 
 sampling_carrier_twist = 0; % ATTENTION! If this is 1, make sure fc is aligned with bin file!!!
 
-num_radioframe = 8; % each radio frame length 10ms. MIB period is 4 radio frame
+num_radioframe = 8; % each radio frame length 10ms. MIB period is 4 radio frames, WHY 8 NOT 4?
 
-pbch_sampling_ratio = 16;
+pbch_sampling_ratio = 16; % To Set Sampling Frequency to 1.92MHz
 sampling_rate = 30.72e6;
 sampling_rate_pbch = sampling_rate/pbch_sampling_ratio; % LTE spec. 30.72MHz/16.
 
@@ -31,9 +33,9 @@ len_time_subframe = 1e-3; % 1ms. LTE spec
 num_sample_per_radioframe = num_subframe_per_radioframe*len_time_subframe*sampling_rate_pbch;
 num_sample_pbch = num_radioframe*num_sample_per_radioframe;
 
-DS_COMB_ARM = 2;
-FS_LTE = 30720000;
-thresh1_n_nines=12;
+DS_COMB_ARM = 2; % VAS IST DAS?
+FS_LTE = 30720000; % 20MHz BW Sampling Frequency
+thresh1_n_nines=12; % NO IDEA
 rx_cutoff=(6*12*15e3/2+4*15e3)/(FS_LTE/16/2);
 THRESH2_N_SIGMA = 3;
 
@@ -44,7 +46,7 @@ for try_idx = 1 : num_try
 
     sp = (try_idx-1)*num_sample_pbch + 1;
     ep = sp + num_sample_pbch - 1;
-    capbuf_pbch = r_pbch(sp:ep).';
+    capbuf_pbch = r_pbch(sp:ep).'; % Grab Necessary Samples to Attempt Decode of PBCH
     
     sp_20M = (sp-1)*pbch_sampling_ratio + 1;
     ep_20M = ep*pbch_sampling_ratio;
