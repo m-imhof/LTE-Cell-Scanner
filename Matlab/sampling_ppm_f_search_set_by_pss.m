@@ -28,23 +28,11 @@ len_short = len - (len_pss-1);
 % cost_time1 = toc;
 % disp(['PSS xcorr cost ' num2str(cost_time1)]);
 
-<<<<<<< HEAD
-% Correlate PSS_FO Sequences with Recevied Signal
-for i=1:num_fo_pss
-    % Perform Cross Correlation (ABS-Squared)
-    tmp_corr = abs( filter(pss_fo_set(end:-1:1, i), 1, s) ).^2;
-    % Grab Second Half
-    tmp_corr = tmp_corr(len_pss:end);
-    corr_store(:,i) = tmp_corr;
-end
-=======
 tic;
 [corr_store, fo_search_set] = fft_corr(s, td_pss, fo_search_set);
 cost_time2 = toc;
 disp(['PSS xcorr cost ' num2str(cost_time2)]);
->>>>>>> upstream/master
 
-% Reshapes corr_store to #PSSx#CorrSamplesx#FO
 if sampling_carrier_twist==1
     ppm = inf;
     f_set = fo_search_set;
@@ -66,40 +54,6 @@ if sampling_carrier_twist==1
     return;
 end
 
-<<<<<<< HEAD
-% PSS Repeats Every Half Radio Frame
-pss_period = [(19200/2)-1, (19200/2), (19200/2)+1]; % 19200 = SamplingFreq x 10ms (1 Radio Frame)
-num_half_radioframe = floor( len_short./pss_period );
-max_peak_all = zeros(1, 3*num_fo_pss);
-max_idx_all = zeros(1, 3*num_fo_pss);
-peak_to_avg = zeros(1, 3*num_fo_pss);
-for i=1:3
-    % 1st PSS Period
-    corr_store_tmp = corr_store(1:pss_period(i), : );
-    % Add in Remaining PSS Periods 
-    for j=2:num_half_radioframe(i)
-        sp = (j-1)*pss_period(i) + 1;
-        ep = j*pss_period(i);
-        corr_store_tmp = corr_store_tmp + corr_store(sp:ep, : );
-    end
-    % Add in Shifted forward and back by one versions
-    corr_store_tmp = corr_store_tmp + circshift(corr_store_tmp, [-1,0]) + circshift(corr_store_tmp, [1,0]);
-    sp = (i-1)*num_fo_pss + 1;
-    ep = i*num_fo_pss;
-    % Find the Max Peak
-    [max_peak_all(sp:ep), max_idx_all(sp:ep)] = max(corr_store_tmp, [], 1);
-    % Calculate Peak to Average Ratio (PAR)
-    for j=sp:ep
-        tmp_peak = max_peak_all(j);
-        tmp_max_idx = max_idx_all(j);
-        peak_area_range = (tmp_max_idx-80) : (tmp_max_idx+80);
-        peak_area_range = mod(peak_area_range-1, pss_period(i)) + 1;
-        tmp_avg = corr_store_tmp(:, j-sp+1);
-        tmp_avg(peak_area_range) = [];
-        tmp_avg = mean(tmp_avg);
-        peak_to_avg(j) = 10*log10(tmp_peak/tmp_avg);
-    end
-=======
 pss_period = 19200/2;
 
 num_half_radioframe = floor( len_short./pss_period );
@@ -111,7 +65,6 @@ for j=2:num_half_radioframe
     sp = (j-1)*pss_period + 1;
     ep = j*pss_period;
     corr_store_tmp = corr_store_tmp + corr_store(sp:ep, : );
->>>>>>> upstream/master
 end
 
 % peak_to_avg_max_max_tmp = zeros(num_half_radioframe, num_fo_pss);
@@ -147,11 +100,6 @@ max_peak_all = max(corr_store, [], 1);
 % end
 [~, sort_idx] = sort(max_peak_all, 'descend');
 
-<<<<<<< HEAD
-max_reserve = 1;
-above_par_idx = (peak_to_avg(sort_idx(1:max_reserve)) > 8.5); % Find the Max PAR Given It's Above 8.5dB
-disp(['Hit        PAR ' num2str(peak_to_avg(sort_idx(1:max_reserve))) 'dB']);
-=======
 % [~, sort_idx] = sort(peak_to_avg, 'descend');
 
 % max_reserve = 1;
@@ -177,7 +125,6 @@ extra_info.par_combined_max = peak_to_avg_combined_max(sort_idx(1:max_reserve));
 extra_info.sort_idx = sort_idx(1:max_reserve);
 a_tmp = [fo_search_set fo_search_set fo_search_set];
 extra_info.fo_raw = a_tmp(sort_idx(1:max_reserve));
->>>>>>> upstream/master
 
 if sum(above_par_idx)==0
     xc = 0;
@@ -203,22 +150,12 @@ fo_idx_set = inf(1, length(sort_idx));
 real_count = 0;
 extra_info.num_forPPM = zeros(1, length(sort_idx));
 for i=1:length(sort_idx)
-<<<<<<< HEAD
-    % Find Which Bracket of num_fo_pss index is in
-    shift_idx = floor( ( sort_idx(i)-1 )/num_fo_pss ) + 1; % 1 -- -1; 2 -- 0; 3 -- 1
-    % Find Which Index 1:num_fo_pss The Peak Is In
-    fo_pss_idx = sort_idx(i) - (shift_idx-1)*num_fo_pss;
-=======
     fo_pss_idx = sort_idx(i);
->>>>>>> upstream/master
     
-    % calculate pss idx - PSS Grouped by FO, i.e. PSS1 PSS1 PSS1 PSS2 PSS2
-    % PSS2 PSS3 PSS3 PSS3
+    % calculate pss idx
     pss_idx = floor( (fo_pss_idx-1)/length(fo_search_set) ) + 1;
     
-    % calculate frequency offset - For Each PSS There are
-    % length(fo_search_set) Frequency Offsets - Find the Best FO Out of the
-    % Given Set
+    % calculate frequency offset
     fo_idx = mod(fo_pss_idx-1, length(fo_search_set)) + 1;
     f_tmp = fo_search_set(fo_idx);
     
