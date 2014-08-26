@@ -108,7 +108,7 @@ void print_usage() {
   cout << "'c' is the correction factor to apply and indicates that if the desired" << endl;
   cout << "center frequency is fc, the RTL-SDR dongle should be instructed to tune" << endl;
   cout << "to freqency fc*c so that its true frequency shall be fc. Default: 1.0" << endl << endl;
-  cout << "'ppm' is the remaining frequency error of the crystal. Default: 120" << endl;
+  cout << "'ppm' is the remaining frequency error of the crystal. Default: - (search -140kHz to 135kHz)" << endl;
   cout << "" << endl;
   cout << "If the crystal has not been used for a long time, use the default values for" << endl;
   cout << "'ppm' and 'c' until a cell is successfully located. The program will return" << endl;
@@ -155,7 +155,7 @@ void parse_commandline(
   freq_end=-1;
   num_try=1; // default number
   sampling_carrier_twist=false;
-  ppm=120;
+  ppm=0;
   correction=1;
   save_cap=false;
   use_recorded_data=false;
@@ -165,7 +165,7 @@ void parse_commandline(
   opencl_device = 0;
   filter_workitem = 32;
   xcorr_workitem = 2;
-  num_reserve = 1;
+  num_reserve = 2;
   num_loop = 0;
   gain = -9999;
 
@@ -374,10 +374,10 @@ void parse_commandline(
     cerr << "Error: number of tries at each frequency/file should be not less than 1" << endl;
     ABORT(-1);
   }
-  if (freq_start/100e3!=itpp::round(freq_start/100e3)) {
-    freq_start=itpp::round(freq_start/100e3)*100e3;
-    cout << "Warning: start frequency has been rounded to the nearest multiple of 100kHz" << endl;
-  }
+//  if (freq_start/100e3!=itpp::round(freq_start/100e3)) {
+//    freq_start=itpp::round(freq_start/100e3)*100e3;
+//    cout << "Warning: start frequency has been rounded to the nearest multiple of 100kHz" << endl;
+//  }
   if (freq_end==-1) {
     freq_end=freq_start;
   }
@@ -385,10 +385,10 @@ void parse_commandline(
     cerr << "Error: end frequency must be >= start frequency" << endl;
     ABORT(-1);
   }
-  if (freq_end/100e3!=itpp::round(freq_end/100e3)) {
-    freq_end=itpp::round(freq_end/100e3)*100e3;
-    cout << "Warning: end frequency has been rounded to the nearest multiple of 100kHz" << endl;
-  }
+//  if (freq_end/100e3!=itpp::round(freq_end/100e3)) {
+//    freq_end=itpp::round(freq_end/100e3)*100e3;
+//    cout << "Warning: end frequency has been rounded to the nearest multiple of 100kHz" << endl;
+//  }
   // PPM values should be positive an most likely less than 200 ppm.
   if (ppm<0) {
     cerr << "Error: ppm value must be positive" << endl;
@@ -856,14 +856,24 @@ int main(
   cmat pss_fo_set;// pre-generate frequencies offseted pss time domain sequence
   vec f_search_set;
   if (sampling_carrier_twist) { // original mode
-    const uint16 n_extra=floor_i((fc_search_set(0)*ppm/1e6+2.5e3)/5e3);
+    uint16 n_extra=0;
+    if (ppm!=0)
+      n_extra=floor_i((fc_search_set(0)*ppm/1e6+2.5e3)/5e3);
+    else
+      n_extra=28;
+
     f_search_set=to_vec(itpp_ext::matlab_range( -n_extra*5000,5000, (n_extra-1)*5000));
     // for graphic card which has limited mem, you should turn num_loop on if OpenCL reports -4: CL_MEM_OBJECT_ALLOCATION_FAILURE
 //    if (num_loop == 0) // it is not so useful
 //      num_loop = length(f_search_set)/2;
   } else {
     if (length(fc_search_set)==1) {//when only one frequency is specified, whole PPM range should be covered
-      const uint16 n_extra=floor_i((fc_search_set(0)*ppm/1e6+2.5e3)/5e3);
+      uint16 n_extra=0;
+      if (ppm!=0)
+        n_extra=floor_i((fc_search_set(0)*ppm/1e6+2.5e3)/5e3);
+      else
+        n_extra=28; //-140kHz to 135kHz
+
       f_search_set=to_vec(itpp_ext::matlab_range( -n_extra*5000,5000, (n_extra-1)*5000));
     } else {
       // since we have frequency step is 100e3, why not have sub search set limited by this regardless PPM?
@@ -985,7 +995,13 @@ int main(
     // 6RB filter to improve SNR
 //    tt.tic();
     #ifdef USE_OPENCL
+//      tt.tic();
       lte_ocl.filter_my(capbuf); // be careful! capbuf.zeros() will slow down the xcorr part pretty much!
+//      cout << "1 cost " << tt.get_time() << "s\n";
+//
+//      tt.tic();
+//      filter_my_fft(coef, capbuf);
+//      cout << "2 cost " << tt.get_time() << "s\n";
     #else
       filter_my(coef, capbuf);
     #endif
@@ -1030,7 +1046,7 @@ int main(
 
         // Calculate the threshold vector
         double R_th1=chi2cdf_inv(1-pow(10.0,-thresh1_n_nines),2*n_comb_xc*(2*DS_COMB_ARM+1));
-        vec Z_th1=R_th1*sp_incoherent/rx_cutoff/137/2/n_comb_xc/(2*DS_COMB_ARM+1);
+        vec Z_th1=R_th1*sp_incoherent/rx_cutoff/137/n_comb_xc/(2*DS_COMB_ARM+1); // remove /2 to avoid many false alarm
 
         // Search for the peaks
         if (verbosity>=2) {
@@ -1055,7 +1071,7 @@ int main(
 
       // Calculate the threshold vector
       double R_th1=chi2cdf_inv(1-pow(10.0,-thresh1_n_nines),2*n_comb_xc*(2*DS_COMB_ARM+1));
-      vec Z_th1=R_th1*sp_incoherent/rx_cutoff/137/2/n_comb_xc/(2*DS_COMB_ARM+1);
+      vec Z_th1=R_th1*sp_incoherent/rx_cutoff/137/n_comb_xc/(2*DS_COMB_ARM+1); // remove /2 to avoid many false alarm
 
       // Search for the peaks
       if (verbosity>=2) {
@@ -1067,13 +1083,16 @@ int main(
     }
 
     detected_cells[fc_idx]=peak_search_cells;
-//    cout << detected_cells[fc_idx].size() << "\n";
+    cout << "Hit  num peaks " << detected_cells[fc_idx].size()/2 << "\n";
 
     // Loop and check each peak
     list<Cell>::iterator iterator=detected_cells[fc_idx].begin();
     int tdd_flag = 1;
+    uint16 tmp_count = 0;
     while (iterator!=detected_cells[fc_idx].end()) {
       tdd_flag = !tdd_flag;
+      cout << "try peak " << tmp_count/2 << " tdd_flag " << tdd_flag << "\n";
+      tmp_count++;
 //      cout << tdd_flag << "\n";
 //      cout << (*iterator).ind << "\n";
       // Detect SSS if possible

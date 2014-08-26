@@ -28,14 +28,16 @@ xc_incoherent_working=xc_incoherent_collapsed_pow;
 peaks=[];
 while (1)
   % Search for the largest peak (not the largest peak relative to Z_th1!)
-  [peak_pow peak_ind]=max(transpose(xc_incoherent_working));
-  [peak_pow peak_n_id_2]=max(peak_pow);
+  [peak_pow, peak_ind]=max(transpose(xc_incoherent_working));
+  [peak_pow, peak_n_id_2]=max(peak_pow);
   peak_n_id_2=peak_n_id_2-1;
   peak_ind=peak_ind(peak_n_id_2+1);
   if (peak_pow<Z_th1(peak_ind))
     break;
   end
+%   disp(['peak_search ' num2str(peak_pow) ' '  num2str(peak_ind)  ' '  num2str(Z_th1(peak_ind))]);
   % Record this peak for further SSS processing
+  rec.Z_th1=Z_th1(peak_ind);
   rec.pow=peak_pow;
   rec.ind=peak_ind;
   rec.freq=f_search_set(xc_incoherent_collapsed_frq(peak_n_id_2+1,peak_ind));

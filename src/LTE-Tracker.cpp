@@ -473,10 +473,10 @@ void parse_commandline(
     cerr << "Error: frequency must be greater than 1MHz" << endl;
     ABORT(-1);
   }
-  if (fc/100e3!=itpp::round(fc/100e3)) {
-    fc=itpp::round(fc/100e3)*100e3;
-    cout << "Warning: frequency has been rounded to the nearest multiple of 100kHz" << endl;
-  }
+//  if (fc/100e3!=itpp::round(fc/100e3)) {
+//    fc=itpp::round(fc/100e3)*100e3;
+//    cout << "Warning: frequency has been rounded to the nearest multiple of 100kHz" << endl;
+//  }
   // PPM values should be positive an most likely less than 200 ppm.
   if (ppm<0) {
     cerr << "Error: ppm value must be positive" << endl;
@@ -1074,7 +1074,7 @@ double kalibrate(
 
         // Calculate the threshold vector
         double R_th1=chi2cdf_inv(1-pow(10.0,-thresh1_n_nines),2*n_comb_xc*(2*DS_COMB_ARM+1));
-        vec Z_th1=R_th1*sp_incoherent/rx_cutoff/137/2/n_comb_xc/(2*DS_COMB_ARM+1);
+        vec Z_th1=R_th1*sp_incoherent/rx_cutoff/137/n_comb_xc/(2*DS_COMB_ARM+1);
 
         // Search for the peaks
         if (verbosity>=2) {
@@ -1096,7 +1096,7 @@ double kalibrate(
 
       // Calculate the threshold vector
       double R_th1=chi2cdf_inv(1-pow(10.0,-thresh1_n_nines),2*n_comb_xc*(2*DS_COMB_ARM+1));
-      vec Z_th1=R_th1*sp_incoherent/rx_cutoff/137/2/n_comb_xc/(2*DS_COMB_ARM+1);
+      vec Z_th1=R_th1*sp_incoherent/rx_cutoff/137/n_comb_xc/(2*DS_COMB_ARM+1);
 
       // Search for the peaks
       if (verbosity>=2) {
