@@ -100,13 +100,15 @@ if isempty(dir([filename(1:end-4) '.mat'])) || nargin == 3
     r_raw = get_signal_from_bin(filename, inf, 'hackrf');
     r_raw = r_raw - mean(r_raw); % remove DC
 
-    r_pbch = filter_wo_tail(r_raw, coef_pbch.*5, sampling_rate_pbch/raw_sampling_rate);
-    r_20M = filter_wo_tail(r_raw, coef_8x_up.*8, 8);
-    r_20M = r_20M(1:5:end);
+    %r_pbch = filter_wo_tail(r_raw, coef_pbch.*5, sampling_rate_pbch/raw_sampling_rate);
+    r_pbch = resample(r_raw,1,10);
+    %r_20M = filter_wo_tail(r_raw, coef_8x_up.*8, 8);
+    %r_20M = r_20M(1:5:end);
+    r_20M = resample(r_raw,8,5);
     
-    figure(1);
-    subplot(2,1,1); plot((0:(length(r_raw)-1))./raw_sampling_rate, real(r_raw)); drawnow;
-    subplot(2,1,2); plot((0:(length(r_raw)-1)).*(raw_sampling_rate./length(r_raw)), 10.*log10( abs(fft(r_raw)).^2 ) ); drawnow;
+%     figure(1);
+%     subplot(2,1,1); plot((0:(length(r_raw)-1))./raw_sampling_rate, real(r_raw)); drawnow;
+%     subplot(2,1,2); plot((0:(length(r_raw)-1)).*(raw_sampling_rate./length(r_raw)), 10.*log10( abs(fft(r_raw)).^2 ) ); drawnow;
     
     [cell_info, r_pbch, r_20M] = CellSearch(r_pbch, r_20M, f_search_set, fc, sampling_carrier_twist, pss_peak_max_reserve, num_pss_period_try, combined_pss_peak_range, par_th, num_peak_th);
     
